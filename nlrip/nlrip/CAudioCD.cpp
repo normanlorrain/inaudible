@@ -165,7 +165,7 @@ BOOL CAudioCD::ReadTrack( ULONG TrackNr, CBuf<char>* pBuf )
 	return TRUE;
 }
 
-
+/*
 BOOL CAudioCD::ExtractTrack( ULONG TrackNr, LPCTSTR Path )
 {
 	ULONG i;
@@ -197,7 +197,16 @@ BOOL CAudioCD::ExtractTrack( ULONG TrackNr, LPCTSTR Path )
 		if ( 0 == DeviceIoControl( m_hCD, IOCTL_CDROM_RAW_READ, &Info, sizeof(Info), Buf, SECTORS_AT_READ*RAW_SECTOR_SIZE, &Dummy, NULL ) )
 			return FALSE;
 
-		WriteFile( hFile, Buf, Buf.Size(), &Dummy, NULL );
+		unsigned short* shrtBuf = (unsigned short *)Buf.Ptr();
+		int shrtBufIndex = 0;
+		int leftBufIndex = 0;
+		int rightBufIndex = 2;
+		for (leftBufIndex = 0; leftBufIndex < Buf.Size(); shrtBufIndex += 2, leftBufIndex += 4, rightBufIndex +=4 )
+		{
+			shrtBuf[shrtBufIndex] = (shrtBuf[leftBufIndex] + shrtBuf[rightBufIndex]) / 2;
+		}
+
+		WriteFile( hFile, Buf, Buf.Size() / 2, &Dummy, NULL );
 	}
 
 	Info.SectorCount = Track.Length % SECTORS_AT_READ;
@@ -210,7 +219,20 @@ BOOL CAudioCD::ExtractTrack( ULONG TrackNr, LPCTSTR Path )
 	return CloseHandle( hFile );
 }
 
+*/
 
+
+void averageChannels(CBuf<char> &Buf)
+{
+	unsigned short* shrtBuf = (unsigned short *)Buf.Ptr();
+	int shrtBufIndex = 0;
+	int leftBufIndex = 0;
+	int rightBufIndex = 1;
+	for (leftBufIndex = 0; leftBufIndex < Buf.Size() / 2; shrtBufIndex += 1, leftBufIndex += 2, rightBufIndex += 2)
+	{
+		shrtBuf[shrtBufIndex] = (shrtBuf[leftBufIndex] + shrtBuf[rightBufIndex]) / 2;
+	}
+}
 
 BOOL CAudioCD::ExtractAllTracks( LPCTSTR Path)
 {
@@ -230,7 +252,7 @@ BOOL CAudioCD::ExtractAllTracks( LPCTSTR Path)
 		TotalLength += m_aTracks.at(track).Length;
 	}
 
-	CWaveFileHeader WaveFileHeader(44100, 16, 2, TotalLength*RAW_SECTOR_SIZE);
+	CWaveFileHeader WaveFileHeader(44100, 16, 1, TotalLength*RAW_SECTOR_SIZE);
 	WriteFile(hFile, &WaveFileHeader, sizeof(WaveFileHeader), &Dummy, NULL);
 
 
@@ -252,14 +274,20 @@ BOOL CAudioCD::ExtractAllTracks( LPCTSTR Path)
 		for (i = 0; i < Track.Length / SECTORS_AT_READ; i++)
 		{
 			Info.DiskOffset.QuadPart = (Track.Address + i*SECTORS_AT_READ) * CD_SECTOR_SIZE;
-			if ( DeviceIoControl(m_hCD, IOCTL_CDROM_RAW_READ, &Info, sizeof(Info), Buf, SECTORS_AT_READ*RAW_SECTOR_SIZE, &Dummy, NULL))
-				WriteFile(hFile, Buf, Buf.Size(), &Dummy, NULL);
+			if (DeviceIoControl(m_hCD, IOCTL_CDROM_RAW_READ, &Info, sizeof(Info), Buf, SECTORS_AT_READ*RAW_SECTOR_SIZE, &Dummy, NULL))
+			{
+				averageChannels(Buf);
+				WriteFile(hFile, Buf, Buf.Size()/2, &Dummy, NULL);
+			}
 		}
 
 		Info.SectorCount = Track.Length % SECTORS_AT_READ;
 		Info.DiskOffset.QuadPart = (Track.Address + i*SECTORS_AT_READ) * CD_SECTOR_SIZE;
 		if (DeviceIoControl(m_hCD, IOCTL_CDROM_RAW_READ, &Info, sizeof(Info), Buf, Info.SectorCount*RAW_SECTOR_SIZE, &Dummy, NULL))
-			WriteFile(hFile, Buf, Info.SectorCount*RAW_SECTOR_SIZE, &Dummy, NULL);
+		{
+			averageChannels(Buf);
+			WriteFile(hFile, Buf, Info.SectorCount*RAW_SECTOR_SIZE  / 2, &Dummy, NULL);
+		}
 	}
 	return CloseHandle(hFile);
 }
