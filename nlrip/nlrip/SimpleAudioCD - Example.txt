@@ -1,0 +1,39 @@
+#include "CAudioCD.h"
+#include <stdio.h>
+
+// Make sure, the files "CBuf.h" and "AudioCD_Helpers.h" are in the same directory as "CAudioCD.h"
+// Also the Files "AudioCD_Helpers.cpp" and "CAudioCD.cpp" should be included in you project.
+
+
+#define YOUR_CDROM_DRIVE 'F'
+
+
+int main( ... )
+{
+    CAudioCD AudioCD;
+    if ( ! AudioCD.Open( YOUR_CDROM_DRIVE ) )
+    {
+        printf( "Cannot open cd-drive!\n" );
+        return 0;
+    }
+
+    ULONG TrackCount = AudioCD.GetTrackCount();
+    printf( "Track-Count: %i\n", TrackCount );
+
+    for ( ULONG i=0; i<TrackCount; i++ )
+    {
+        ULONG Time = AudioCD.GetTrackTime( i );
+        printf( "Track %i: %i:%.2i;  %i bytes of size\n", i+1, Time/60, Time%60, AudioCD.GetTrackSize(i) );
+    }
+
+    // Save track-data to file...
+    if ( ! AudioCD.ExtractTrack( 7, "C:\\Song.wav" ) )
+        printf( "Cannot extract track 7!\n" );
+
+    // ... or just get the data into memory
+    CBuf<char> Buf;
+    if ( ! AudioCD.ReadTrack 5, &Buf ) )
+        printf( "Cannot read track!\n" );
+
+    return 0;
+}

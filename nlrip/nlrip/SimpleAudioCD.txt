@@ -1,0 +1,45 @@
+Hi
+
+I'll give you some information about the files and their use:
+
+CAudioCD.h & CAudioCD.cpp:
+    That's the files what it's all about. They contain the class CAudioCD which helps
+    you extracting audio-tracks from a cd. Take a look at the example-file.
+
+    class CAudioCD
+    {
+        // Constructor / Destructor
+        CAudioCD( char Drive='\0' );
+        ~CAudioCD();
+
+        // Open / Close access to cd-drive
+        BOOL Open( char Drive );
+        BOOL IsOpened();
+        void Close();
+
+        // Read / Get track-data
+        ULONG GetTrackCount();
+        ULONG GetTrackTime( ULONG Track );
+        ULONG GetTrackSize( ULONG Track );
+        BOOL ReadTrack( ULONG Track, CBuf<char>* pBuf );
+        BOOL ExtractTrack( ULONG Track, LPCTSTR Path );
+
+        // Lock / Unlock the cd-drive
+        BOOL LockCD();
+        BOOL UnlockCD();
+
+        // General operations
+        BOOL InjectCD();
+        BOOL IsCDReady( char Drive='\0' );
+        BOOL EjectCD();
+    };
+
+
+CBuf.h:
+    Contains a class CBuf. It's a pretty simple buffer-class.
+
+
+AudioCD_Helpers.h & AudioCD_Helpers.cpp:
+    These files contain some definitions and structures needed by the CAudioCD-class.
+    The only important thing is the CWaveFileHeader class. It creates a header
+    for a wave-file. You only have to specify the audio-attributes.
