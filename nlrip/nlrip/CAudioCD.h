@@ -88,7 +88,7 @@ class CAudioCD
 		// Saves down the given track to a file (Path).
 		// That file will be in valid wav-format with the default
 		//   cd-audio-attributes: 44100Hz, 16Bit, Stereo
-		BOOL ExtractTrack( ULONG Track, LPCTSTR Path );
+		// BOOL ExtractTrack( ULONG Track, LPCTSTR Path );
 
 		// Saves down the tracks to a file (Path).
 		// That file will be in valid wav-format with the default

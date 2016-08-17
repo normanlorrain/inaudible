@@ -166,51 +166,23 @@ BOOL CAudioCD::ReadTrack( ULONG TrackNr, CBuf<char>* pBuf )
 }
 
 
-BOOL CAudioCD::ExtractTrack( ULONG TrackNr, LPCTSTR Path )
+char* stereoSamples = NULL;
+
+ULONG averageChannels( char * stereoSamples, ULONG stereoByteLength  )
 {
-	ULONG i;
-	if ( m_hCD == NULL )
-		return FALSE;
+	ULONG stereoShortLength = stereoByteLength / 2;
+	//printf("stereoByteLength %d, stereoShortLength %d", stereoByteLength, stereoShortLength);
 
-	ULONG Dummy;
-
-	if ( TrackNr >= m_aTracks.size() )
-		return FALSE;
-	CDTRACK& Track = m_aTracks.at(TrackNr);
-
-	HANDLE hFile = CreateFile( Path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
-	if ( hFile == INVALID_HANDLE_VALUE )
-		return FALSE;
-
-	CWaveFileHeader WaveFileHeader( 44100, 16, 2, Track.Length*RAW_SECTOR_SIZE );
-	WriteFile( hFile, &WaveFileHeader, sizeof(WaveFileHeader), &Dummy, NULL );
-
-	CBuf<char> Buf( SECTORS_AT_READ * RAW_SECTOR_SIZE );
-
-	RAW_READ_INFO Info;
-	Info.TrackMode = CDDA;
-	Info.SectorCount = SECTORS_AT_READ;
-
-	for ( i=0; i<Track.Length/SECTORS_AT_READ; i++ )
+	short* shrtBuf = (short *)stereoSamples;
+	ULONG shrtBufIndex = 0;
+	ULONG leftBufIndex = 0;
+	ULONG rightBufIndex = 1;
+	for (leftBufIndex = 0; leftBufIndex < stereoShortLength; shrtBufIndex += 1, leftBufIndex += 2, rightBufIndex += 2)
 	{
-		Info.DiskOffset.QuadPart = (Track.Address + i*SECTORS_AT_READ) * CD_SECTOR_SIZE;
-		if ( 0 == DeviceIoControl( m_hCD, IOCTL_CDROM_RAW_READ, &Info, sizeof(Info), Buf, SECTORS_AT_READ*RAW_SECTOR_SIZE, &Dummy, NULL ) )
-			return FALSE;
-
-		WriteFile( hFile, Buf, Buf.Size(), &Dummy, NULL );
+		shrtBuf[shrtBufIndex] = (shrtBuf[leftBufIndex] /2) + (shrtBuf[rightBufIndex] /2);
 	}
-
-	Info.SectorCount = Track.Length % SECTORS_AT_READ;
-	Info.DiskOffset.QuadPart = (Track.Address + i*SECTORS_AT_READ) * CD_SECTOR_SIZE;
-	if ( 0 == DeviceIoControl( m_hCD, IOCTL_CDROM_RAW_READ, &Info, sizeof(Info), Buf, Info.SectorCount*RAW_SECTOR_SIZE, &Dummy, NULL ) )
-		return FALSE;
-
-	WriteFile( hFile, Buf, Info.SectorCount*RAW_SECTOR_SIZE, &Dummy, NULL );
-
-	return CloseHandle( hFile );
+	return shrtBufIndex * sizeof(unsigned short);
 }
-
-
 
 BOOL CAudioCD::ExtractAllTracks( LPCTSTR Path)
 {
@@ -230,15 +202,20 @@ BOOL CAudioCD::ExtractAllTracks( LPCTSTR Path)
 		TotalLength += m_aTracks.at(track).Length;
 	}
 
-	CWaveFileHeader WaveFileHeader(44100, 16, 2, TotalLength*RAW_SECTOR_SIZE);
+	CWaveFileHeader WaveFileHeader(44100, 16, 1, TotalLength*RAW_SECTOR_SIZE/2);
 	WriteFile(hFile, &WaveFileHeader, sizeof(WaveFileHeader), &Dummy, NULL);
 
 
 	for (ULONG track = 0; track < m_aTracks.size(); ++track )
-	{
+	{  
+		 
 		CDTRACK& Track = m_aTracks.at(track);
 		ULONG trackTime = Track.Length / 75;
 		ULONG trackSize = Track.Length * RAW_SECTOR_SIZE;
+
+		stereoSamples = (char*) malloc(trackSize);
+		ULONG stereoIndex = 0;
+
 
 		printf("Track %i: %i:%.2i;  %i bytes of size\n", track + 1, trackTime / 60, trackTime % 60, trackSize);
 
@@ -252,14 +229,25 @@ BOOL CAudioCD::ExtractAllTracks( LPCTSTR Path)
 		for (i = 0; i < Track.Length / SECTORS_AT_READ; i++)
 		{
 			Info.DiskOffset.QuadPart = (Track.Address + i*SECTORS_AT_READ) * CD_SECTOR_SIZE;
-			if ( DeviceIoControl(m_hCD, IOCTL_CDROM_RAW_READ, &Info, sizeof(Info), Buf, SECTORS_AT_READ*RAW_SECTOR_SIZE, &Dummy, NULL))
-				WriteFile(hFile, Buf, Buf.Size(), &Dummy, NULL);
+			if (DeviceIoControl(m_hCD, IOCTL_CDROM_RAW_READ, &Info, sizeof(Info), Buf, SECTORS_AT_READ*RAW_SECTOR_SIZE, &Dummy, NULL))
+			{
+				memcpy(&stereoSamples[stereoIndex], Buf, Dummy);
+				stereoIndex += Dummy;
+				//WriteFile(hFile, Buf, Buf.Size()/2, &Dummy, NULL);
+			}
 		}
 
 		Info.SectorCount = Track.Length % SECTORS_AT_READ;
 		Info.DiskOffset.QuadPart = (Track.Address + i*SECTORS_AT_READ) * CD_SECTOR_SIZE;
 		if (DeviceIoControl(m_hCD, IOCTL_CDROM_RAW_READ, &Info, sizeof(Info), Buf, Info.SectorCount*RAW_SECTOR_SIZE, &Dummy, NULL))
-			WriteFile(hFile, Buf, Info.SectorCount*RAW_SECTOR_SIZE, &Dummy, NULL);
+		{
+			memcpy(&stereoSamples[stereoIndex], Buf, Dummy);
+			stereoIndex += Dummy; 
+			//WriteFile(hFile, Buf, Info.SectorCount*RAW_SECTOR_SIZE  / 2, &Dummy, NULL);
+		}
+		ULONG newLength = averageChannels(stereoSamples, stereoIndex);
+		WriteFile(hFile, stereoSamples, newLength,  &Dummy, NULL);
+		free(stereoSamples);
 	}
 	return CloseHandle(hFile);
 }

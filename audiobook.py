@@ -11,9 +11,13 @@ if not os.path.exists(indir):
 os.chdir(indir)
 # print("Local directory: ", os.getcwd() )
 
+RIP_EXE = 'nlrip.exe'
+ripper = None
+for root, dirs, files in os.walk(scriptDirectory):
+        if RIP_EXE in files:
+            ripper = os.path.join(root, RIP_EXE)
 
-ripper = os.path.join(scriptDirectory, 'nlrip', 'nlrip.exe')
-# print("Ripper:", ripper)
+print("Ripper:", ripper)
 
 ripNum = 1
 while True:
