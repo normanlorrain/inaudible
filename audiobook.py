@@ -1,9 +1,7 @@
 import glob , os, subprocess ,sys
 from metadata import * 
-
+import metadata
 scriptDirectory = os.path.dirname(os.path.realpath(__file__))
-
-
 indir = os.path.join("C:\\","book",title)  #C:\\book\A Distant Mirror"
 if not os.path.exists(indir):
     os.makedirs(indir)
@@ -11,53 +9,63 @@ if not os.path.exists(indir):
 os.chdir(indir)
 # print("Local directory: ", os.getcwd() )
 
-RIP_EXE = 'nlrip.exe'
-ripper = None
-for root, dirs, files in os.walk(scriptDirectory):
-        if RIP_EXE in files:
-            ripper = os.path.join(root, RIP_EXE)
 
-print("Ripper:", ripper)
+# print(dir(metadata))
+def rip():
 
-ripNum = 1
-while True:
-    subprocess.call("{} {:0>2}.wav".format(ripper, ripNum) , shell=True)
-    ans = input("Saved disk {}.  Rip another CD? [Y/n]".format(ripNum)) or 'Y'
-    if ans not in ['Y','y']: 
-        break
-    ripNum  += 1
+    RIP_EXE = 'nlrip.exe'
+    ripper = None
+    for root, dirs, files in os.walk(scriptDirectory):
+            if RIP_EXE in files:
+                ripper = os.path.join(root, RIP_EXE)
 
-encoder = os.path.join(scriptDirectory, 'qaac', 'qaac64.exe')
-AAC_CMD = encoder + '  -o "{outdir}\\{filename}.m4b" -v32  --title "{title}" --artist "{artist}" --artwork "{art}" --concat "{files}"'
+    print("Ripper:", ripper)
 
-
-
-infiles = sorted( glob.glob(os.path.join( indir, "*.wav")) )
-
-artwork = glob.glob(os.path.join( indir, "*.jp*" ) )[0]
-
-# Break up large audibooks for iPod compatibility (13 hour max)
-n = 12
-if len(infiles) > n:
-    part = 1
-else:
-    part = 0
+    ripNum = 1
+    while True:
+        subprocess.call("{} {:0>2}.wav".format(ripper, ripNum) , shell=True)
+        ans = input("Saved disk {}.  Rip another CD? [Y/n]".format(ripNum)) or 'Y'
+        if ans not in ['Y','y']: 
+            break
+        ripNum  += 1
 
 
-for i in range(0,len(infiles),n):
-    files = '" "'.join( infiles[i:i+n]  )
-    if part:
-        filename = '{} Part {}'.format(title, part)
+
+def encode():
+    encoder = os.path.join(scriptDirectory, 'qaac', 'qaac64.exe')
+    AAC_CMD = encoder + '  -o "{outdir}\\{filename}.m4b" -v32  --title "{title}" --artist "{artist}" --artwork "{art}" --concat "{files}"'
+
+
+
+    infiles = sorted( glob.glob(os.path.join( indir, "*.wav")) )
+
+    artwork = glob.glob(os.path.join( indir, "*.jp*" ) )[0]
+
+    # Break up large audibooks for iPod compatibility (13 hour max)
+    n = 12
+    if len(infiles) > n:
+        part = 1
     else:
-        filename = title
-    print('-----------------------------')
-    cmd = AAC_CMD.format(outdir = indir, filename = filename, artist = artist, title = title, art = artwork, files = files)
-    print(cmd)
-    sts = subprocess.call(cmd, shell=True)
-    print('===============================')
-
-    part += 1
+        part = 0
 
 
+    for i in range(0,len(infiles),n):
+        files = '" "'.join( infiles[i:i+n]  )
+        if part:
+            filename = '{} Part {}'.format(title, part)
+        else:
+            filename = title
+        print('-----------------------------')
+        cmd = AAC_CMD.format(outdir = indir, filename = filename, artist = author, title = title, art = artwork, files = files)
+        print(cmd)
+        sts = subprocess.call(cmd, shell=True)
+        print('===============================')
 
-ans = input("Encoding done.  Press Enter to continue.")
+        part += 1
+
+
+
+if __name__ == '__main__':
+    #rip()
+    encode()
+    ans = input("Encoding done.  Press Enter to continue.")
