@@ -348,3 +348,5 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+*.cfg

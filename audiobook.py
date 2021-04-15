@@ -9,6 +9,7 @@ if not os.path.exists(indir):
 os.chdir(indir)
 # print("Local directory: ", os.getcwd() )
 
+drive='E'
 
 # print(dir(metadata))
 def rip():
@@ -23,7 +24,9 @@ def rip():
 
     ripNum = 1
     while True:
-        subprocess.call("{} {:0>2}.wav".format(ripper, ripNum) , shell=True)
+        
+        result = subprocess.run("{} {} {:0>2}.wav".format(ripper, drive, ripNum) , check=True)
+        
         ans = input("Saved disk {}.  Rip another CD? [Y/n]".format(ripNum)) or 'Y'
         if ans not in ['Y','y']: 
             break
@@ -66,6 +69,6 @@ def encode():
 
 
 if __name__ == '__main__':
-    #rip()
+    # rip()
     encode()
     ans = input("Encoding done.  Press Enter to continue.")
