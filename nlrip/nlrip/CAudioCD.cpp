@@ -320,6 +320,5 @@ BOOL CAudioCD::EjectCD()
 		return FALSE;
 	ULONG Dummy;
 	BOOL rc;
-	rc &= DeviceIoControl( m_hCD, IOCTL_STORAGE_EJECT_MEDIA, NULL, 0, NULL, 0, &Dummy, NULL );
-	return rc;
+	return 0 != DeviceIoControl( m_hCD, IOCTL_STORAGE_EJECT_MEDIA, NULL, 0, NULL, 0, &Dummy, NULL );
 }
